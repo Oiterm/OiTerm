@@ -1,0 +1,122 @@
+{
+  "name": "oiterm",
+  "productName": "OiTerm",
+  "version": "1.8.1",
+  "description": "네트워크 엔지니어용 SSH / Telnet / 시리얼 터미널",
+  "main": "src/main/main.js",
+  "author": "OiTerm",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "node tools/build-notices.js && electron-builder --win zip --x64",
+    "dist:win-installer": "node tools/build-notices.js && electron-builder --win nsis --x64",
+    "build:novnc": "node tools/build-novnc.js",
+    "build:oui": "node tools/build-oui.js",
+    "build:notices": "node tools/build-notices.js"
+  },
+  "dependencies": {
+    "@novnc/novnc": "^1.7.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/xterm": "^6.0.0",
+    "basic-ftp": "^6.2.3",
+    "iconv-lite": "^0.7.3",
+    "node-pty": "^1.1.0",
+    "serialport": "^13.0.0",
+    "ssh2": "^1.17.0",
+    "ws": "^8.22.0",
+    "zmodem.js": "^0.1.10"
+  },
+  "devDependencies": {
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
+    "oui-data": "^2.1.48"
+  },
+  "build": {
+    "appId": "com.oiterm.app",
+    "productName": "OiTerm",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "build/icon.png",
+      "package.json",
+      "!**/*.map",
+      "!node_modules/**/*.md",
+      "!node_modules/**/test/**",
+      "!node_modules/@serialport/bindings-cpp/prebuilds/{android-*,darwin-*,linux-*,win32-arm64,win32-ia32}/**",
+      "!node_modules/@serialport/bindings-cpp/src/**",
+      "!node_modules/ssh2/lib/protocol/crypto/src/**",
+      "!node_modules/@xterm/*/src/**",
+      "!node_modules/@xterm/*/typings/**",
+      "!node_modules/@xterm/**/*.mjs",
+      "!node_modules/ssh2/test/**",
+      "!node_modules/ssh2/examples/**",
+      "!node_modules/@novnc/**",
+      "!node_modules/esbuild/**",
+      "!node_modules/@esbuild/**",
+      "!node_modules/zmodem.js/dist/**",
+      "!node_modules/zmodem.js/tests/**",
+      "!node_modules/oui-data/**",
+      "!node_modules/node-pty/{src,deps,scripts,typings,third_party,build,node_modules}/**",
+      "!node_modules/node-pty/prebuilds/{darwin-*,win32-arm64}/**",
+      "!node_modules/node-pty/prebuilds/win32-x64/conpty/**",
+      "!node_modules/node-pty/lib/*.test.js",
+      "!node_modules/node-pty/binding.gyp",
+      "!**/*.pdb",
+      "!**/node_modules/node-addon-api/**"
+    ],
+    "asarUnpack": [
+      "node_modules/@serialport/bindings-cpp/**",
+      "node_modules/node-pty/**"
+    ],
+    "npmRebuild": false,
+    "win": {
+      "icon": "build/icon.ico",
+      "artifactName": "OiTerm-${version}-win-x64.${ext}",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "artifactName": "OiTerm-Setup-${version}.${ext}"
+    },
+    "electronLanguages": [
+      "ko",
+      "en-US"
+    ],
+    "linux": {
+      "target": "dir",
+      "icon": "build/icon.png"
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    },
+    "extraFiles": [
+      {
+        "from": "build/THIRD-PARTY-NOTICES.txt",
+        "to": "THIRD-PARTY-NOTICES.txt"
+      },
+      {
+        "from": "LICENSE.txt",
+        "to": "LICENSE.txt"
+      },
+      {
+        "from": "build/third_party",
+        "to": "third_party"
+      },
+      {
+        "from": "README.md",
+        "to": "사용법.md"
+      }
+    ]
+  }
+}

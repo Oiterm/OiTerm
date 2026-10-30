@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'self' ws://127.0.0.1:*; worker-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:">
+  <title>OiTerm</title>
+  <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header id="toolbar">
+      <div class="tb-group">
+        <button class="tb" id="tb-quick" data-icon="zap" title="빠른 연결 (Ctrl+Shift+T)">빠른 연결</button>
+        <button class="tb" id="tb-new-session" data-icon="plus" title="새 세션 만들기">새 세션</button>
+        <button class="tb" id="tb-local" data-icon="prompt" title="로컬 셸 — PowerShell / cmd / WSL (Ctrl+Shift+`)">로컬</button>
+        <button class="tb icon-only" id="tb-sidebar" data-icon="sidebar" title="세션 창 보이기/숨기기 (Ctrl+Shift+B)"></button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <button class="tb" id="tb-reconnect" data-icon="refresh" title="재연결 (Ctrl+Shift+R)">재연결</button>
+        <button class="tb" id="tb-disconnect" data-icon="unplug" title="연결 끊기">끊기</button>
+        <button class="tb" id="tb-log" data-icon="file" title="로그 시작/중지 (Ctrl+Shift+L)">로그</button>
+        <button class="tb" id="tb-break" data-icon="octagon" title="Break 신호 보내기 (시리얼 콘솔 전용 — 비밀번호 복구 등)">Break</button>
+        <button class="tb" id="tb-send" data-icon="upload" title="XMODEM / YMODEM으로 파일 보내기 (콘솔 펌웨어 업로드). ZMODEM은 장비에서 rz/sz 실행하면 자동">보내기</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <button class="tb" id="tb-split" data-icon="split" title="화면 분할 (좌우 / 상하 / 4분할)">분할</button>
+        <button class="tb" id="tb-broadcast" data-icon="broadcast" title="키 입력을 여러 탭에 똑같이 보내기">동시 입력</button>
+        <button class="tb" id="tb-cmdwin" data-icon="terminal" title="명령창 — 여러 탭에 동시 전송 (Ctrl+Shift+M)">명령창</button>
+        <button class="tb" id="tb-buttonbar" data-icon="grid" title="버튼바 보이기/숨기기">버튼바</button>
+        <button class="tb" id="tb-find" data-icon="search" title="화면에서 찾기 (Ctrl+Shift+F)">찾기</button>
+      </div>
+      <div class="tb-spacer"></div>
+      <div class="tb-group">
+        <button class="tb" id="tb-tftp" data-icon="server" title="TFTP 서버 (장비 설정 백업 / 이미지 받기)">TFTP</button>
+        <button class="tb" id="tb-scan" data-icon="radar" title="IP 스캔 (살아있는 장비·열린 포트 찾기)">IP 스캔</button>
+        <button class="tb" id="tb-logfolder" data-icon="folder" title="로그 폴더 열기">로그 폴더</button>
+        <button class="tb" id="tb-settings" data-icon="sliders" title="설정">설정</button>
+      </div>
+    </header>
+
+    <div id="main">
+      <aside id="sidebar">
+        <div class="side-head">
+          <div class="search-box"><span data-icon="search"></span><input id="session-search" type="text" placeholder="세션 검색 (이름, IP)" spellcheck="false"></div>
+          <button class="icon-btn" id="side-new" data-icon="plus" title="새 세션"></button>
+        </div>
+        <div id="session-tree" tabindex="0"></div>
+        <div class="side-foot" id="side-foot"></div>
+      </aside>
+      <div id="resizer"></div>
+      <section id="workspace">
+        <div id="tabbar">
+          <div id="tabs"></div>
+          <button class="icon-btn" id="tab-add" data-icon="plus" title="빠른 연결"></button>
+        </div>
+        <div id="bc-banner" hidden><span id="bc-text"></span><button class="btn sm" id="bc-off">끄기</button></div>
+        <div id="terminals">
+          <div id="welcome"></div>
+        </div>
+        <div id="findbar" hidden>
+          <input id="find-input" type="text" placeholder="찾을 내용" spellcheck="false">
+          <label class="chk"><input type="checkbox" id="find-case"> 대소문자</label>
+          <label class="chk"><input type="checkbox" id="find-regex"> 정규식</label>
+          <button class="btn sm" id="find-prev">이전</button>
+          <button class="btn sm" id="find-next">다음</button>
+          <span id="find-result"></span>
+          <button class="icon-btn" id="find-close" data-icon="x" title="닫기 (Esc)"></button>
+        </div>
+        <div id="tooldock" hidden>
+          <div class="td-head">
+            <span id="td-title"></span>
+            <span class="grow"></span>
+            <button class="btn sm" id="td-again">다시</button>
+            <button class="btn sm" id="td-stop">중지</button>
+            <button class="btn sm" id="td-copy">복사</button>
+            <button class="icon-btn" id="td-close" data-icon="x" title="닫기"></button>
+          </div>
+          <pre id="td-out"></pre>
+        </div>
+        <div id="buttonbar"></div>
+        <div id="cmdwin" hidden>
+          <textarea id="cmd-text" spellcheck="false" placeholder="여기에 명령을 쓰고 Ctrl+Enter — 여러 줄이면 한 줄씩 순서대로 보냅니다"></textarea>
+          <div class="cmd-side">
+            <select id="cmd-target">
+              <option value="current">현재 탭에 보내기</option>
+              <option value="visible">분할 화면에 보이는 탭에 보내기</option>
+              <option value="all">연결된 모든 탭에 보내기</option>
+            </select>
+            <div class="cmd-pace">
+              <select id="cmd-delay" title="한 줄 보내고 다음 줄까지 기다리는 시간">
+                <option value="">줄 간격: 설정값</option>
+                <option value="0">줄 간격: 0ms</option>
+                <option value="30">줄 간격: 30ms</option>
+                <option value="50">줄 간격: 50ms</option>
+                <option value="100">줄 간격: 100ms</option>
+                <option value="200">줄 간격: 200ms</option>
+                <option value="500">줄 간격: 500ms</option>
+                <option value="1000">줄 간격: 1초</option>
+              </select>
+              <label class="chk" title="한 줄 보내고 장비가 프롬프트(SW1# 등)를 다시 띄울 때까지 기다렸다가 다음 줄. 콘솔·느린 장비에 긴 설정을 넣을 때"><input type="checkbox" id="cmd-wait"> 프롬프트 기다리기</label>
+            </div>
+            <label class="chk"><input type="checkbox" id="cmd-clear" checked> 보낸 뒤 지우기</label>
+            <button class="btn primary" id="cmd-send">보내기 (Ctrl+Enter)</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer id="statusbar">
+      <span id="sb-conn">연결 없음</span>
+      <span id="sb-log"></span>
+      <span class="sb-spacer"></span>
+      <span id="sb-size"></span>
+    </footer>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="ctx-menu" hidden></div>
+  <div id="toast-root"></div>
+
+  <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <script src="../../node_modules/@xterm/addon-search/lib/addon-search.js"></script>
+  <script src="vendor/novnc.js"></script>
+  <script src="ui.js"></script>
+  <script src="guard.js"></script>
+  <script src="smart.js"></script>
+  <script src="terminal.js"></script>
+  <script src="vnc.js"></script>
+  <script src="files.js"></script>
+  <script src="tftp.js"></script>
+  <script src="scan.js"></script>
+  <script src="web.js"></script>
+  <script src="dialogs.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
