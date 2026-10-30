@@ -51,6 +51,8 @@ const DEFAULT_SETTINGS = {
   localShell: '',
   localAutoLog: false,
   updateCheck: true,
+  pcipPresets: [],
+  pcipLastAdapter: '',
   sidebarWidth: 240,
   showSidebar: true,
   showButtonBar: true,

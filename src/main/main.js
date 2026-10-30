@@ -15,6 +15,7 @@ const { ScanManager, toCsv, vendorOf } = require('./scanner');
 const { NetTools } = require('./nettools');
 const localshell = require('./localshell');
 const { Updater, isInstalled, RELEASES_PAGE } = require('./updater');
+const { PcIp } = require('./pcip');
 
 let win = null;
 let store = null;
@@ -25,6 +26,7 @@ let webMgr = null;
 let scanMgr = null;
 let netTools = null;
 let updater = null;
+let pcip = null;
 let askSeq = 0;
 const pending = new Map();
 let rendererReady = false;
@@ -353,6 +355,12 @@ function registerIpc() {
   handle('app:about', () => ({ version: app.getVersion(), notices: noticesPath(), license: licensePath(), installed: isInstalled() }));
 
   // ---- 자동 업데이트 ----
+  // PC IP 바꾸기 (값 검사는 pcip.js에서 다시 함)
+  handle('pcip:list', () => pcip.list());
+  const str = (v) => (typeof v === 'string' ? v.slice(0, 64) : '');
+  handle('pcip:apply', (_e, req) => pcip.apply(req && typeof req === 'object' && !Array.isArray(req)
+    ? { index: typeof req.index === 'number' ? req.index : NaN, mode: str(req.mode), ip: str(req.ip), mask: str(req.mask), gw: str(req.gw), dns1: str(req.dns1), dns2: str(req.dns2) } : null));
+  handle('pcip:restore', (_e, index) => pcip.restore(typeof index === 'number' ? index : NaN));
   handle('update:check', () => updater.check({ manual: true }));
   handle('update:install', () => updater.install());
   on('update:skip', (_e, v) => updater.skip(typeof v === 'string' ? v : ''));
@@ -429,6 +437,8 @@ if (unregisterMode) {
     scanMgr = new ScanManager(send);
     netTools = new NetTools(send);
     fileMgr = new FileManager({ store, send, ask, resolve: (req) => mgr.resolve(req) });
+    // 개발 중 시험할 때만 가짜 PowerShell을 끼울 수 있음 (배포본은 무시)
+    pcip = new PcIp({ store, runPs: !app.isPackaged && process.env.OITERM_PCIP_FAKE ? require(process.env.OITERM_PCIP_FAKE) : undefined });
     registerIpc();
     createWindow();
     // 예전 이름(SwitchTerm.exe)으로 걸려 있던 링크 연동을 새 exe로 옮김

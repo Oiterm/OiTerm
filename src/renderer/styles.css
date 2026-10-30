@@ -402,3 +402,19 @@ input.inp::placeholder, textarea::placeholder { color: var(--muted); }
 #update-banner .upd-status { color: var(--text-2); font-size: 12px; }
 #update-banner .upd-status:empty { display: none; }
 .upd-notes { white-space: pre-wrap; line-height: 1.6; max-height: 50vh; overflow: auto; font-size: 13px; }
+
+/* PC IP 바꾸기 */
+.pcip-modal { width: 620px; }
+.pcip { display: flex; flex-direction: column; gap: 12px; }
+.pcip-top, .pcip-presets { display: flex; gap: 8px; align-items: center; }
+.pcip-presets > span { color: var(--text-2); white-space: nowrap; }
+.pcip-cur { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; font-size: 12.5px; line-height: 1.7; color: var(--text-2); }
+.pcip-cur b { color: var(--text); }
+.pcip-mode { display: flex; gap: 18px; }
+.pcip-grid { display: flex; flex-direction: column; gap: 6px; }
+.pcip-row { display: grid; grid-template-columns: 90px 200px 1fr; gap: 8px; align-items: center; }
+.pcip-row label { color: var(--text-2); }
+.pcip-row .hint { font-size: 12px; }
+.pcip-msg { min-height: 18px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.pcip-msg.err { color: var(--err); }
+.pcip-msg.ok { color: var(--ok); }

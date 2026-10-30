@@ -99,6 +99,7 @@ async function smartMenuItems(tab, kind, text) {
       '-',
       { label: `IP 스캔: ${ip}`, action: () => app.openScan(ip, { start: true }) },
       { label: `대역 스캔: ${cidr || net24}`, action: () => app.openScan(cidr || net24) },
+      { label: `내 PC IP를 이 대역으로… (${ip.replace(/\.\d+$/, '.x')}/24)`, action: () => PcIpUI.open({ forDevice: ip }) },
       '-',
       cmd.trim() ? { label: `장비에 입력: ${cmd}`, disabled: !canType, action: () => tab.typeText(cmd) } : null,
       copy(ip, 'IP 복사'),

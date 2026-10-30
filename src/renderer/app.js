@@ -872,6 +872,7 @@ const App = window.App = {
     $('#tb-send').onclick = () => this.active && this.active.sendFileDialog && this.active.sendFileDialog();
     $('#tb-tftp').onclick = () => this.openTftp();
     $('#tb-scan').onclick = () => this.openScan();
+    $('#tb-pcip').onclick = () => PcIpUI.open();
     $('#tb-local').onclick = (e) => this.localMenu(e);
     $('#tb-cmdwin').onclick = () => this.toggleCmdWin();
     $('#tb-split').onclick = (e) => this.layoutMenu(e);
