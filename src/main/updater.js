@@ -12,7 +12,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 
-const REPO = 'c1hangmin/OiTerm';
+const REPO = 'Oiterm/OiTerm';
 const FEED = `https://github.com/${REPO}/releases/latest/download/`;
 const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`;
 // 업데이트 서명 공개 키 (개인 키는 GitHub 저장소 Secrets와 만든 사람 PC에만 있음)
