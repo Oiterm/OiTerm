@@ -290,7 +290,7 @@ npm run dist:win-installer   # 설치 파일(.exe) 생성
 npm run dist:release    # 설치 파일 + zip
 ```
 
-릴리즈는 `v2.0.0` 같은 태그를 올리면 GitHub Actions(`.github/workflows/release.yml`)가 Windows에서 빌드하고, 저장소 Secrets의 `OITERM_UPDATE_KEY`로 `latest.json`을 서명해서 Releases에 올립니다. 변경 내용은 `CHANGELOG.md`의 해당 버전 부분이 그대로 쓰입니다.
+릴리즈는 GitHub **Actions 탭 → release → Run workflow**(package.json 버전으로 `v<버전>` 태그를 만듦) 또는 `v2.0.0` 같은 태그를 올리면 GitHub Actions(`.github/workflows/release.yml`)가 Windows에서 빌드하고, 저장소 Secrets의 `OITERM_UPDATE_KEY`로 `latest.json`을 서명해서 Releases에 올립니다. 변경 내용은 `CHANGELOG.md`의 해당 버전 부분이 그대로 쓰입니다.
 
 ## 구조
 

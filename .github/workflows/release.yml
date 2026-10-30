@@ -1,9 +1,12 @@
-# v로 시작하는 태그(v2.0.0 등)를 올리면 Windows에서 빌드 → 업데이트 정보 서명 → GitHub 릴리즈에 올림
+# 릴리즈: Windows에서 빌드 → 업데이트 정보 서명 → GitHub 릴리즈에 올림
+#  - 방법 1: Actions 탭 → release → "Run workflow" (package.json 버전으로 v<버전> 태그를 만들어 올림)
+#  - 방법 2: v2.0.0 같은 태그를 올림
 name: release
 
 on:
   push:
     tags: ['v*.*.*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,6 +17,8 @@ concurrency:
 
 jobs:
   build:
+    # main 브랜치나 v 태그에서만 (다른 브랜치에서 실수로 릴리즈 방지)
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
@@ -26,12 +31,16 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: 태그와 package.json 버전 확인
+      - name: 버전 확인
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           V=$(node -p "require('./package.json').version")
-          if [ "v$V" != "$GITHUB_REF_NAME" ]; then echo "태그($GITHUB_REF_NAME)와 package.json 버전(v$V)이 다릅니다"; exit 1; fi
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "v$V" != "$GITHUB_REF_NAME" ]; then echo "태그($GITHUB_REF_NAME)와 package.json 버전(v$V)이 다릅니다"; exit 1; fi
+          if gh release view "v$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then echo "v$V 릴리즈가 이미 있습니다. package.json 버전을 올리세요."; exit 1; fi
           echo "VERSION=$V" >> "$GITHUB_ENV"
+          echo "TAG=v$V" >> "$GITHUB_ENV"
 
       - name: 의존성 설치
         run: npm ci
@@ -52,10 +61,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$TAG" \
             "dist/OiTerm-Setup-$VERSION.exe" \
             "dist/OiTerm-$VERSION-win-x64.zip" \
             dist/latest.json dist/latest.json.sig \
             --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
             --title "OiTerm $VERSION" \
             --notes-file dist/RELEASE_NOTES.md
