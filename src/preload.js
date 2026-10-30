@@ -76,6 +76,10 @@ contextBridge.exposeInMainWorld('api', {
   localShells: () => ipcRenderer.invoke('local:shells'),
   pickShell: () => ipcRenderer.invoke('local:pickShell'),
   about: () => ipcRenderer.invoke('app:about'),
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  updateSkip: (v) => ipcRenderer.send('update:skip', v),
+  updateOpenPage: () => ipcRenderer.send('update:openPage'),
   openNotices: (which) => ipcRenderer.send('app:openNotices', which),
   openExternal: (url) => ipcRenderer.send('app:openExternal', url),
   webOpen: (tabId, req) => ipcRenderer.invoke('web:open', tabId, req),
@@ -108,5 +112,7 @@ contextBridge.exposeInMainWorld('api', {
   onScanWarn: on('scan:warn'),
   onToolData: on('tool:data'),
   onToolExit: on('tool:exit'),
+  onUpdateAvailable: on('update:available'),
+  onUpdateProgress: on('update:progress'),
   onFilesClosed: on('files:closed'),
 });

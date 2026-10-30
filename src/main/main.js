@@ -1,7 +1,7 @@
 'use strict';
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, Menu, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, Menu, session, net } = require('electron');
 const { Store } = require('./store');
 const { ConnectionManager } = require('./connections');
 const { importSecureCRT } = require('./importer');
@@ -14,6 +14,7 @@ const { WebManager } = require('./web');
 const { ScanManager, toCsv, vendorOf } = require('./scanner');
 const { NetTools } = require('./nettools');
 const localshell = require('./localshell');
+const { Updater, isInstalled, RELEASES_PAGE } = require('./updater');
 
 let win = null;
 let store = null;
@@ -23,6 +24,7 @@ const tftp = new TftpServer();
 let webMgr = null;
 let scanMgr = null;
 let netTools = null;
+let updater = null;
 let askSeq = 0;
 const pending = new Map();
 let rendererReady = false;
@@ -348,7 +350,13 @@ function registerIpc() {
   });
 
   // ---- 오픈소스 라이선스 ----
-  handle('app:about', () => ({ version: app.getVersion(), notices: noticesPath(), license: licensePath() }));
+  handle('app:about', () => ({ version: app.getVersion(), notices: noticesPath(), license: licensePath(), installed: isInstalled() }));
+
+  // ---- 자동 업데이트 ----
+  handle('update:check', () => updater.check({ manual: true }));
+  handle('update:install', () => updater.install());
+  on('update:skip', (_e, v) => updater.skip(typeof v === 'string' ? v : ''));
+  on('update:openPage', () => shell.openExternal(RELEASES_PAGE));
   on('app:openNotices', (_e, which) => {
     const f = which === 'license' ? licensePath() : noticesPath();
     if (f) shell.openPath(f);
@@ -378,11 +386,22 @@ function registerIpc() {
   }
 }());
 
-// 프로그램은 하나만 실행. 이미 켜져 있으면 링크를 기존 창에 넘기고 종료
-const firstLinks = protocol.extractLinks(process.argv);
-const gotLock = app.requestSingleInstanceLock({ links: firstLinks });
+// 제거 프로그램이 부르는 정리 모드: 우리가 등록한 링크 연동만 되돌리고 바로 끝 (창 없음)
+const unregisterMode = process.argv.includes('--unregister-links');
+if (unregisterMode) {
+  app.whenReady().then(async () => {
+    try { await protocol.unregister(new Store()); } catch (_) {}
+    app.exit(0);
+  });
+}
 
-if (!gotLock) {
+// 프로그램은 하나만 실행. 이미 켜져 있으면 링크를 기존 창에 넘기고 종료
+const firstLinks = unregisterMode ? [] : protocol.extractLinks(process.argv);
+const gotLock = unregisterMode ? false : app.requestSingleInstanceLock({ links: firstLinks });
+
+if (unregisterMode) {
+  // 위에서 처리
+} else if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', (_e, argv, _cwd, data) => {
@@ -418,6 +437,8 @@ if (!gotLock) {
       flushNotices();
     }).catch(() => {});
     if (firstLinks.length) openLinks(firstLinks);
+    updater = new Updater({ app, net, send, store, quit: () => { if (win) win.forceClose = true; app.quit(); } });
+    updater.autoCheck();
   });
 
   app.on('window-all-closed', () => app.quit());

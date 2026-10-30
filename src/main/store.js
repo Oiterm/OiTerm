@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS = {
   dangerRules: null,
   localShell: '',
   localAutoLog: false,
+  updateCheck: true,
   sidebarWidth: 240,
   showSidebar: true,
   showButtonBar: true,

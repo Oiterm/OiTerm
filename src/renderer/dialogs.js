@@ -590,6 +590,8 @@ function settingsDialog(st, section) {
     const localShell = h('select');
     const localLog = h('input', { type: 'checkbox', checked: !!s.localAutoLog });
     window.api.localShells().then((list) => { for (const x of list) localShell.append(h('option', { value: x.id, selected: x.id === s.localShell }, x.name)); });
+    const updOn = h('input', { type: 'checkbox', checked: s.updateCheck !== false });
+    const updOut = h('span.hint');
     const aboutBox = h('div.hint');
     window.api.about().then((a) => { aboutBox.textContent = `OiTerm ${a.version} · MIT 라이선스 오픈소스. 함께 들어 있는 오픈소스 목록과 라이선스 전문은 아래 버튼으로 볼 수 있습니다.${a.notices ? '' : ' (개발 중 실행이라 라이선스 파일이 아직 없습니다)'}`; });
 
@@ -674,6 +676,12 @@ function settingsDialog(st, section) {
           field('받은 파일 폴더', h('div.row', transferDir, h('button.btn.sm', { onclick: async () => { const d = await window.api.pickFolder({ title: '받은 파일 폴더' }); if (d) transferDir.value = d; } }, '찾기'))),
         )),
       labSection(s),
+      h('div.form-section', { id: 'settings-update' }, h('h4', '업데이트'),
+        h('div.grid',
+          h('div.full', h('label.chk', updOn, '하루 한 번 새 버전 확인 (GitHub 릴리즈)')),
+          h('div.full', h('div.row', h('button.btn.sm', { onclick: () => UpdateUI.manualCheck(updOut) }, '지금 확인'), updOut)),
+          h('div.full.hint', 'OiTerm 서명 키로 서명된 파일만 설치합니다. 인터넷이 막힌 망에서 쓰면 꺼두세요. 확인할 때 github.com에만 접속하고, 보내는 정보는 없습니다(OiTerm 버전이 적힌 User-Agent뿐).'),
+        )),
       h('div.form-section', h('h4', '정보 / 오픈소스 라이선스'),
         aboutBox,
         h('div.row', { style: 'margin-top:8px' },
@@ -728,6 +736,7 @@ function settingsDialog(st, section) {
               dangerRules: rulesTouched ? rules.filter((r) => r.match && r.match.trim()).map((r) => ({ match: r.match.trim(), mode: r.mode || 'any', level: r.level || 'confirm', note: r.note || '', ...(r.unless ? { unless: r.unless } : {}) })) : null,
               localShell: localShell.value || s.localShell || '',
               localAutoLog: localLog.checked,
+              updateCheck: updOn.checked,
             };
             m.close();
           },

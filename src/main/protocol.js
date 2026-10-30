@@ -202,13 +202,23 @@ async function unregister(store) {
   return { ok: true, status: await status() };
 }
 
-/** 예전 SwitchTerm.exe로 등록돼 있던 링크 종류를 지금 exe로 다시 등록 (사용자가 이미 켜둔 것만) */
+/** 설치 프로그램으로 깐 OiTerm인지 (같은 폴더에 제거 프로그램) */
+function installedHere() {
+  try { return fs.existsSync(path.join(path.dirname(process.execPath), 'Uninstall OiTerm.exe')); } catch (_) { return false; }
+}
+
+/** 예전 SwitchTerm.exe나 다른 위치의 OiTerm.exe로 등록돼 있던 링크 종류를 지금 exe로 다시 등록 (사용자가 이미 켜둔 것만) */
 async function migrateLegacy(app, store) {
   if (process.platform !== 'win32') return [];
   const legacy = [];
+  const here = installedHere();
   for (const sc of SCHEMES) {
     const cmd = await regGet(`HKCU\\Software\\Classes\\${sc}\\shell\\open\\command`);
-    if (cmd && /switchterm\.exe/i.test(cmd) && !isOurs(cmd)) legacy.push(sc);
+    if (!cmd || isOurs(cmd)) continue;
+    if (/switchterm\.exe/i.test(cmd)) { legacy.push(sc); continue; }
+    // 다른 위치의 OiTerm.exe로 걸려 있음: 그 파일이 없어졌거나(zip 폴더 삭제·이동), 지금 것이 설치 버전이면 지금 것으로
+    const m = /"([^"]*oiterm\.exe)"/i.exec(cmd);
+    if (m && (!fs.existsSync(m[1]) || here)) legacy.push(sc);
   }
   if (!legacy.length) return [];
   const r = await register(app, store, legacy);

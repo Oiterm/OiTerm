@@ -7,10 +7,17 @@ const { safeName } = require('./logger');
 
 const SIZES = { full: null, '1920x1080': [1920, 1080], '1600x900': [1600, 900], '1366x768': [1366, 768], '1280x800': [1280, 800], '1024x768': [1024, 768] };
 
+// .rdp 파일은 한 줄에 설정 하나라서, 값에 줄바꿈이 들어가면 설정을 몰래 더할 수 있음
+// (예: rdp:// 링크 사용자 이름에 %0D%0A 넣어 "drivestoredirect:s:*" 추가) → 제어 문자는 전부 지움
+const clean = (v) => String(v == null ? '' : v).replace(/[\x00-\x1f\x7f]/g, '').slice(0, 255);
+
 function buildRdp(cfg) {
   const port = Number(cfg.port) || 3389;
-  const addr = port === 3389 ? cfg.host : `${cfg.host}:${port}`;
-  const user = cfg.username ? (cfg.domain ? `${cfg.domain}\\${cfg.username}` : cfg.username) : '';
+  const host = clean(cfg.host);
+  const addr = port === 3389 ? host : `${host}:${port}`;
+  const username = clean(cfg.username);
+  const domain = clean(cfg.domain);
+  const user = username ? (domain ? `${domain}\\${username}` : username) : '';
   const size = SIZES[cfg.rdpSize || 'full'];
   const lines = [
     `full address:s:${addr}`,
@@ -43,7 +50,7 @@ async function launch(app, cfg, secrets) {
   const { text, user } = buildRdp(cfg);
   // 비밀번호가 저장돼 있으면 Windows 자격 증명에 넣어서 자동 로그인 (mstsc가 직접 읽음)
   if (secrets && secrets.password && user) {
-    await run(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmdkey.exe'), [`/generic:TERMSRV/${cfg.host}`, `/user:${user}`, `/pass:${secrets.password}`]);
+    await run(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmdkey.exe'), [`/generic:TERMSRV/${clean(cfg.host)}`, `/user:${user}`, `/pass:${secrets.password}`]);
   }
   const dir = path.join(app.getPath('userData'), 'rdp');
   fs.mkdirSync(dir, { recursive: true });

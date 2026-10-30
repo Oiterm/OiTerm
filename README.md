@@ -5,7 +5,9 @@
 네트워크 엔지니어용 Windows 터미널 — SSH · Telnet · 시리얼(콘솔) · SFTP/FTP · VNC · RDP · 웹 GUI · 로컬 셸(PowerShell/cmd/WSL)을 탭 하나로.
 EVE-NG / PNETLab 노드 클릭 연동, 분할 화면·동시 입력, 위험 명령 경고, 화면의 IP·MAC 바로 Ping·조회, IP 스캔, TFTP 서버까지 들어 있습니다.
 
-- **다운로드**: 오른쪽 [Releases](../../releases)에서 `OiTerm-<버전>-win-x64.zip`을 받아 압축을 풀고 `OiTerm.exe` 실행 (Windows 10/11 64비트)
+- **다운로드**: 오른쪽 [Releases](../../releases)에서 (Windows 10/11 64비트)
+  - **`OiTerm-Setup-<버전>.exe`** — 설치 버전 (추천). 설치 위치를 고를 수 있고, 새 버전이 나오면 앱 안에서 버튼 한 번으로 업데이트
+  - `OiTerm-<버전>-win-x64.zip` — 무설치 버전. 압축 풀고 `OiTerm.exe` 실행
 - **라이선스**: MIT (`LICENSE.txt`). 함께 들어 있는 오픈소스 목록은 빌드할 때 만들어지는 `THIRD-PARTY-NOTICES.txt`
 - 개인이 만들어 공유하는 프로젝트라 공식 지원은 없습니다. 코드 서명이 없어 처음 실행할 때 Windows SmartScreen 경고가 뜰 수 있습니다.
 
@@ -16,12 +18,19 @@ EVE-NG / PNETLab 노드 클릭 연동, 분할 화면·동시 입력, 위험 명�
 - 예전에 쓰던 로그·받은 파일·TFTP 폴더(`문서\SwitchTerm Logs` 등)는 설정에 저장된 경로 그대로 계속 씁니다.
 - 예전 SwitchTerm 폴더(압축 푼 곳)는 OiTerm을 한 번 실행해서 세션이 보이는 걸 확인한 뒤 지우면 됩니다. 예전 프로그램이 켜져 있는 동안에는 옮기지 못하니 먼저 닫아주세요.
 
-## 실행
+## 설치 / 실행
 
-1. `OiTerm-1.6.0-win-x64.zip` 압축을 아무 폴더에 풉니다 (예: `C:\Tools\OiTerm`).
-2. `OiTerm.exe` 실행.
+**설치 버전 (`OiTerm-Setup-<버전>.exe`)**
+1. 실행 → "나만"(관리자 권한 필요 없음, 기본) 또는 "모든 사용자"(관리자 권한 요청) 선택.
+2. 설치 위치 선택 (기본 `%LOCALAPPDATA%\Programs\OiTerm`, 원하는 폴더로 바꿀 수 있음) → 설치.
+3. 바탕화면·시작 메뉴에 바로가기가 생기고, 지울 때는 **설정 → 앱** 또는 제어판 "프로그램 제거"에서.
    - 서명되지 않은 프로그램이라 처음엔 "Windows의 PC 보호" 창이 뜰 수 있습니다 → **추가 정보 → 실행**.
-3. 설치 과정은 없습니다. 지울 때는 폴더만 지우면 됩니다.
+
+**무설치 버전 (zip)**
+1. `OiTerm-<버전>-win-x64.zip` 압축을 아무 폴더에 풉니다 (예: `C:\Tools\OiTerm`).
+2. `OiTerm.exe` 실행. 지울 때는 폴더만 지우면 됩니다.
+
+둘 다 설정·세션 저장 위치가 같아서, zip으로 쓰다가 설치 버전으로 바꿔도 세션이 그대로 보입니다.
 
 설정·세션은 `%APPDATA%\OiTerm\oiterm-config.json`에 저장됩니다 (비밀번호는 Windows DPAPI로 암호화).
 로그는 기본적으로 `문서\OiTerm Logs`에 쌓입니다.
@@ -172,12 +181,20 @@ EVE-NG / PNETLab 노드 클릭 연동, 분할 화면·동시 입력, 위험 명�
 - **프롬프트 기다리기**를 켜면 장비가 `SW1(config-if)#` 같은 프롬프트를 다시 띄운 뒤에 다음 줄을 보냅니다. 9600 콘솔이나 느린 스위치에 긴 설정을 넣을 때 줄이 씹히지 않습니다. 15초 동안 프롬프트가 안 나오면 멈추고 몇 번째 줄에서 멈췄는지 알려줍니다.
 - 키워드 색칠(up·connected 초록, down·err-disabled·fail 빨강 등)은 설정 → 키워드 색칠에서 바꿉니다.
 
+## 자동 업데이트
+
+- 하루 한 번(켜져 있을 때) GitHub 릴리즈에서 새 버전을 확인하고, 있으면 오른쪽 아래에 알림이 뜹니다. **설정 → 업데이트**에서 끄거나 "지금 확인".
+- **설치 버전**: "업데이트" → 받아서 확인 → 조용히 설치 → OiTerm이 다시 켜짐 (설치 위치·설정 그대로). 연결된 탭은 끊기니 작업 중이면 나중에.
+- **zip 버전**: 다운로드 페이지만 열어줍니다 (새 zip을 받아 같은 폴더에 덮어쓰기).
+- 안전장치: 업데이트 정보(`latest.json`)는 OiTerm 서명 키(Ed25519)로 서명되어 있고, 앱에 들어 있는 공개 키로 확인합니다. 서명이 안 맞거나, 받은 설치 파일의 SHA-512·크기가 서명된 값과 다르거나, 지금보다 낮은 버전이면 설치하지 않습니다. github.com 주소만 접속하고, 다른 곳으로 넘기려 하면 멈춥니다. 보내는 정보는 없습니다(버전이 적힌 User-Agent뿐).
+- 인터넷이 막힌 폐쇄망에서는 설정에서 꺼두세요.
+
 ## 배포 / 오픈소스 라이선스
 
 - OiTerm은 **MIT 라이선스** 오픈소스입니다 (`LICENSE.txt`). 회사에서 쓰거나 다른 사람에게 그대로 나눠줘도 됩니다.
 - 함께 들어 있는 오픈소스의 목록·라이선스 전문은 `THIRD-PARTY-NOTICES.txt` (설정 → 정보 → "오픈소스 라이선스 보기"). 전부 MIT / Apache-2.0 / BSD / MPL-2.0 / Unlicense 같은 허용형이고 GPL은 없습니다.
 - noVNC(MPL-2.0)는 한 줄 고쳐서 묶었기 때문에, 고친 소스와 변경 내역을 `third_party/noVNC` 폴더에 함께 넣었습니다.
-- 나눠줄 때는 zip을 **통째로** 주세요 (LICENSE.txt, THIRD-PARTY-NOTICES.txt, LICENSE.electron.txt, LICENSES.chromium.html, third_party 폴더가 같이 있어야 함).
+- 나눠줄 때는 설치 파일(`OiTerm-Setup-<버전>.exe`)을 주거나, zip을 **통째로** 주세요 (LICENSE.txt, THIRD-PARTY-NOTICES.txt, LICENSE.electron.txt, LICENSES.chromium.html, third_party 폴더가 같이 있어야 함).
 - 코드 서명은 안 되어 있어서 받은 사람 PC에서 SmartScreen 경고가 뜰 수 있고, 회사·기관마다 프로그램 반입 승인 절차가 따로 있을 수 있습니다.
 
 ## 보안
@@ -195,6 +212,7 @@ EVE-NG / PNETLab 노드 클릭 연동, 분할 화면·동시 입력, 위험 명�
 - IP 스캔은 입력한 대역을 숫자로 바꾼 뒤 다시 만든 주소만 쓰고, ping·arp는 Windows System32의 절대 경로로 셸 없이 실행합니다. 장비가 보낸 이름·배너는 글자로만 표시하고, CSV로 저장할 때 `=` `+` `-` `@`로 시작하는 칸은 엑셀 수식으로 실행되지 않게 막습니다.
 - 로컬 셸은 정해진 셸(System32의 PowerShell·cmd·WSL, Program Files의 PowerShell 7·Git Bash)이나 사용자가 고른 절대 경로 .exe만 실행하고, 인자는 넘기지 않습니다. 웹 페이지·EVE 링크로는 로컬 셸을 열 수 없습니다. 셸에는 Electron/Node 관련 환경 변수를 넘기지 않습니다.
 - 스마트 링크의 Ping/Traceroute는 화면에서 찾은 IP를 숫자로 검사한 뒤 System32의 ping/tracert를 셸 없이 실행합니다 (동시 4개, 계속 핑은 최대 1시간). URL은 http/https만 인식합니다.
+- 자동 업데이트는 서명(Ed25519)·SHA-512가 모두 맞는 설치 파일만 실행 (위 "자동 업데이트" 참고).
 - 배포 파일은 Electron 보안 퓨즈 적용 (ELECTRON_RUN_AS_NODE, NODE_OPTIONS, 디버거 인자 차단, asar 무결성 검사).
 
 알고 쓰셔야 하는 것:
@@ -210,6 +228,7 @@ EVE-NG / PNETLab 노드 클릭 연동, 분할 화면·동시 입력, 위험 명�
 
 | 버전 | 추가 기능 | 확인한 것 | 결과 |
 |---|---|---|---|
+| 2.0.0 | 설치 프로그램, 서명 확인 자동 업데이트 | npm audit / 정적 검사 / 업데이트 공격 시험 30여 개: 변조한 latest.json·다른 키로 서명·잘린 서명·이름/버전 위조·`..\\` 들어간 설치 파일 이름·같은/낮은 버전(되돌리기)·다른 호스트(evil.example.com, http)로 리다이렉트·리다이렉트 무한 반복·초대형 응답(길이 헤더/흘려보내기)·바꿔치기한 설치 파일(해시·크기 다름)·zip 버전 자동 설치 시도·배포본에서 시험용 주소/키 환경 변수 무시 / 업데이트 변경 내용에 `<script>` → 글자로만 표시 / 실제 Electron 네트워크로 리다이렉트 처리 확인 / 설치 프로그램: 다른 폴더에 설치·조용히 설치·업데이트(같은 폴더 유지)·제거(파일·바로가기·제어판 항목 정리, 링크 연동 해제) / **점검 중 발견**: `rdp://` 링크 사용자 이름에 줄바꿈(`%0D%0A`)을 넣으면 .rdp 파일에 설정(드라이브 공유 등)을 몰래 추가할 수 있던 것 → 제어 문자 제거 / 전체 회귀 테스트 | 모두 차단 확인, 취약점 0 |
 | 1.8.1 | 로그·탭 이름을 장비 호스트 이름으로 (콘솔·IP 접속) | 장비가 보낸 호스트 이름이 파일 이름이 되므로: 경로 문자(`..\\`, `/`, `:` 등) 제거·이름 뒤에 날짜 붙여 예약 이름(CON 등)과 겹치지 않음 / 프롬프트를 계속 바꾸는 장비에 대비해 콘솔 로그 나누기는 탭당 30개까지 / 리눅스 서버가 보내는 터미널 제목(OSC)은 EVE 링크 탭에서만 사용 / npm audit / 전체 회귀 테스트 | 취약점 0 |
 | 1.8.0 | 로컬 셸, 스마트 링크(IP/MAC), 위험 명령 경고, 명령창 줄 간격·프롬프트 기다리기, 오픈소스 고지 | npm audit / 정적 검사 / Ping·Traceroute IP 칸에 `;` `$( )` 옵션(`-c 99999`)·객체 끼워넣기 / 동시 실행 제한 / 로컬 셸: 인자 붙인 경로·상대 경로·실행 파일 아닌 파일·없는 셸 이름 → 거부, `local://` `powershell://` 링크 → 무시, 셸 환경 변수에 ELECTRON_* 없음 / node-pty가 셸을 끌 때 OiTerm.exe를 Node 모드로 다시 띄우는 동작(보안 퓨즈와 충돌) → 그 단계를 막고 System32 taskkill로 정리 / 장비 출력에 `<img onerror>` 넣은 URL·`javascript:`·`file:` → 링크 안 됨·메뉴에서 실행 안 됨 / 위험 명령: Enter 연타·이름 틀림·동시 입력 2대·여러 줄 붙여넣기(3행 shutdown)·버튼·차단 규칙·탭별 끄기 / 전체 회귀 테스트 | 모두 차단 확인, 취약점 0. node-pty의 asar 밖 JS 파일은 asar 무결성 검사 대상이 아님(설치 폴더 쓰기 권한이 있어야 바꿀 수 있음) |
 | 1.7.0 | IP 스캔 탭 | npm audit / 대역·포트 칸에 명령어 끼워넣기(`;` `&&` `$( )`) / 화면을 거치지 않고 IPC로 직접 이상한 값(객체·음수·초대형 동시 수·/8 대역) 보내기 / 공인 IP 확인 우회 / 장비 배너에 HTML(`<img onerror>`) → 실행 여부 / 배너에 엑셀 수식(`=cmd\|...`) → CSV 저장 시 무력화 / 스캔 중지 후 ping 프로세스 남는지 / 동시 스캔 개수 제한 / **기존 코드 점검 중 발견**: reg.exe·cmdkey.exe를 이름만으로 실행해서 현재 폴더의 같은 이름 파일이 먼저 실행될 수 있던 것 → System32 절대 경로로 수정 / 탭을 닫아도 그 탭의 로그인 창이 남던 것 → 같이 닫히게 수정 / 전체 회귀 테스트 | 모두 차단 확인, 취약점 0. 이상한 값 IPC 테스트에서 오류 처리 누락 1건 발견 → 수정 |
@@ -268,7 +287,10 @@ npm install
 npm start               # 개발 모드로 실행
 npm run dist:win        # 오픈소스 고지 만들고 dist\OiTerm-<버전>-win-x64.zip 생성
 npm run dist:win-installer   # 설치 파일(.exe) 생성
+npm run dist:release    # 설치 파일 + zip
 ```
+
+릴리즈는 `v2.0.0` 같은 태그를 올리면 GitHub Actions(`.github/workflows/release.yml`)가 Windows에서 빌드하고, 저장소 Secrets의 `OITERM_UPDATE_KEY`로 `latest.json`을 서명해서 Releases에 올립니다. 변경 내용은 `CHANGELOG.md`의 해당 버전 부분이 그대로 쓰입니다.
 
 ## 구조
 
@@ -286,6 +308,7 @@ src/
     files.js         SFTP / FTP 파일 전송
     vncproxy.js      VNC 화면용 WebSocket ↔ TCP 중계 (127.0.0.1)
     rdp.js           .rdp 파일 만들어 mstsc 실행
+    updater.js       자동 업데이트 (서명 확인, 설치 파일 해시 확인)
     ssh-common.js    SSH 공통 (구형 장비 알고리즘, 호스트 키)
     transfer.js      ZMODEM (zmodem.js), XMODEM / YMODEM 보내기
     tftp.js          TFTP 서버
@@ -305,8 +328,12 @@ src/
     scan.js          IP 스캔 탭
     smart.js         스마트 링크 (IP·MAC·URL 인식, 메뉴), 도구 창
     guard.js         위험 명령 경고 (프롬프트 읽기, 규칙, 확인 창)
+    updateui.js      새 버전 알림, 업데이트 진행
     dialogs.js       세션 편집 / 설정 / 버튼 / 로그인 / 호스트 키 창
     app.js           세션 트리, 탭, 툴바, 버튼바, 명령창, 단축키
+build/installer.nsh   설치 프로그램 추가 동작 (제거할 때 링크 연동 해제)
+tools/make-update-manifest.js   릴리즈용 latest.json 만들고 서명
+.github/workflows/release.yml   태그 → 빌드 → 서명 → 릴리즈
 ```
 
 사용 라이브러리: Electron, xterm.js, ssh2, serialport, node-pty, iconv-lite, noVNC, ws, basic-ftp, zmodem.js, oui-data(제조사 목록). 라이선스 전문은 THIRD-PARTY-NOTICES.txt

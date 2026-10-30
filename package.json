@@ -1,18 +1,20 @@
 {
   "name": "oiterm",
   "productName": "OiTerm",
-  "version": "1.8.1",
+  "version": "2.0.0",
   "description": "네트워크 엔지니어용 SSH / Telnet / 시리얼 터미널",
   "main": "src/main/main.js",
   "author": "OiTerm",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "dist:win": "node tools/build-notices.js && electron-builder --win zip --x64",
-    "dist:win-installer": "node tools/build-notices.js && electron-builder --win nsis --x64",
+    "dist:win": "node tools/build-notices.js && electron-builder --win zip --x64 --publish never",
+    "dist:win-installer": "node tools/build-notices.js && electron-builder --win nsis --x64 --publish never",
     "build:novnc": "node tools/build-novnc.js",
     "build:oui": "node tools/build-oui.js",
-    "build:notices": "node tools/build-notices.js"
+    "build:notices": "node tools/build-notices.js",
+    "dist:release": "node tools/build-notices.js && electron-builder --win nsis zip --x64 --publish never",
+    "sign:update": "node tools/make-update-manifest.js"
   },
   "dependencies": {
     "@novnc/novnc": "^1.7.0",
@@ -80,8 +82,22 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
       "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "OiTerm",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "include": "build/installer.nsh",
+      "installerLanguages": [
+        "ko_KR"
+      ],
+      "language": "1042",
       "artifactName": "OiTerm-Setup-${version}.${ext}"
     },
     "electronLanguages": [
@@ -118,5 +134,10 @@
         "to": "사용법.md"
       }
     ]
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/c1hangmin/OiTerm.git"
+  },
+  "homepage": "https://github.com/c1hangmin/OiTerm"
 }

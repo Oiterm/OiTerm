@@ -44,6 +44,7 @@ const App = window.App = {
     this.bindFind();
     this.bindCmdWin();
     ToolDock.bind();
+    UpdateUI.bind();
     this.bindIpc();
     this.bindShortcuts();
 
