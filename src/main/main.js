@@ -442,9 +442,21 @@ if (unregisterMode) {
     registerIpc();
     createWindow();
     // 예전 이름(SwitchTerm.exe)으로 걸려 있던 링크 연동을 새 exe로 옮김
-    protocol.migrateLegacy(app, store).then((moved) => {
+    protocol.migrateLegacy(app, store).then(async ({ moved, others }) => {
       if (moved && moved.length) notices.push(`EVE-NG / PNETLab 링크 연동(${moved.join(', ')})을 OiTerm으로 옮겼습니다.`);
       flushNotices();
+      // 다른 폴더의 OiTerm에 링크가 걸려 있으면 바꿀지 물어봄 (같은 경로는 "그대로"라고 하면 다시 안 물음)
+      const ask1 = (others || []).filter((o) => (store.data.linkKeepOther || '').toLowerCase() !== o.path.toLowerCase());
+      if (!ask1.length) return;
+      for (let i = 0; i < 100 && !rendererReady; i++) await new Promise((r) => setTimeout(r, 300));
+      const ans = await ask('linkmove', null, { schemes: ask1.map((o) => o.scheme), other: ask1[0].path, here: process.execPath });
+      if (ans === true) {
+        const r = await protocol.register(app, store, ask1.map((o) => o.scheme));
+        send('app:notice', r.ok ? 'EVE-NG / PNETLab 링크를 지금 켜진 OiTerm으로 바꿨습니다.' : '링크를 바꾸지 못했습니다: ' + r.message);
+      } else if (ans === false) {
+        store.data.linkKeepOther = ask1[0].path;
+        store.save();
+      }
     }).catch(() => {});
     if (firstLinks.length) openLinks(firstLinks);
     updater = new Updater({ app, net, send, store, quit: () => { if (win) win.forceClose = true; app.quit(); } });

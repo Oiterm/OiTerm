@@ -506,6 +506,7 @@ function labSection(s) {
       let line;
       if (x.ours) line = [h('span', { style: 'color:var(--ok)' }, '● OiTerm'), ' — 노드를 누르면 OiTerm으로 열립니다.'];
       else if (x.registered && x.userChoice) line = [h('span', { style: 'color:var(--warn)' }, '● 거의 다 됨'), ` — Windows "기본 앱"에서 ${x.other || '다른 프로그램'}이(가) 우선입니다. "Windows 기본 앱 설정 열기" → "링크 유형별 기본값" → ${sc.toUpperCase()} → OiTerm`];
+      else if (x.otherOiTerm) line = [h('span', { style: 'color:var(--warn)' }, '● 다른 OiTerm'), ` — 다른 폴더의 OiTerm으로 열립니다${x.otherExists ? '' : ' (그 파일은 이제 없음)'}: `, h('code', { style: 'word-break:break-all' }, x.otherPath), '. "선택한 링크를 OiTerm으로 열기"를 누르면 지금 이 OiTerm으로 바뀝니다.'];
       else line = [h('span', { style: 'color:var(--muted)' }, '● 연결 안 됨'), x.other ? ` — 지금은 ${x.other}(으)로 열립니다.` : ' — 열 프로그램이 없습니다.'];
       statusBox.append(h('div', h('b', { style: 'display:inline-block;min-width:170px' }, what[sc]), ...line));
     }
@@ -552,6 +553,23 @@ function settingsDialog(st, section) {
     const logDir = h('input.inp.grow', { value: s.logDir, spellcheck: 'false' });
     const autoLogAll = h('input', { type: 'checkbox', checked: s.autoLogAll });
     const logTs = h('input', { type: 'checkbox', checked: s.logTimestamps });
+    const logLayout = sel([['flat', '한 폴더에 모두'], ['date', '날짜별 폴더'], ['date-device', '날짜별 폴더 → 장비별 폴더']], s.logLayout || 'flat');
+    const logDaily = h('input', { type: 'checkbox', checked: !!s.logDaily });
+    const logPreview = h('div.full.hint.log-preview');
+    const updLogPreview = () => {
+      const d = new Date();
+      const p2 = (n) => String(n).padStart(2, '0');
+      const day = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+      const ymd = day.replace(/-/g, '');
+      const t = `${ymd}_${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
+      const f = logDaily.checked ? (logLayout.value === 'flat' ? `SW1_${ymd}.log` : 'SW1.log') : `SW1_${t}.log`;
+      const sub = logLayout.value === 'flat' ? '' : logLayout.value === 'date' ? `${day}\\` : `${day}\\SW1\\`;
+      logPreview.textContent = `예) ${(logDir.value || '로그 폴더').replace(/[\\/]+$/, '')}\\${sub}${f}` + (logDaily.checked ? '   — 같은 날 다시 접속하면 이 파일에 이어서 씁니다' : '');
+    };
+    logLayout.addEventListener('change', updLogPreview);
+    logDaily.addEventListener('change', updLogPreview);
+    logDir.addEventListener('input', updLogPreview);
+    updLogPreview();
     const logHostName = sel([['auto', '콘솔·IP로 바로 접속한 탭은 장비 호스트 이름으로 (추천)'], ['always', '항상 장비 호스트 이름으로'], ['off', '세션 이름 그대로 (EVE 링크만 호스트 이름)']], s.logHostName || 'auto');
     const defEnc = sel([['utf8', 'UTF-8'], ['cp949', 'EUC-KR (CP949)']], s.defaultEncoding);
     const defTerm = sel([['xterm', 'xterm'], ['xterm-256color', 'xterm-256color'], ['vt100', 'vt100'], ['ansi', 'ansi']], s.defaultTermType);
@@ -633,6 +651,9 @@ function settingsDialog(st, section) {
           field('로그 폴더', h('div.row', logDir, h('button.btn.sm', { onclick: async () => { const d = await window.api.pickFolder({ title: '로그 폴더 선택' }); if (d) logDir.value = d; } }, '찾기'))),
           h('div.full', h('label.chk', autoLogAll, '모든 세션을 자동으로 로그 저장 (세션별로 끌 수 있음)')),
           h('div.full', h('label.chk', logTs, '로그 줄마다 시간 기록 [YYYY-MM-DD HH:MM:SS] (끄면 장비 화면과 똑같이 저장)')),
+          field('폴더 구조', logLayout),
+          h('div.full', h('label.chk', logDaily, '하루에 장비당 파일 하나 (같은 날 다시 접속하면 같은 파일에 이어서 저장)')),
+          logPreview,
           field('탭·로그 파일 이름', logHostName),
           h('div.full.hint', '프롬프트(SW1# 등)에서 호스트 이름을 읽어 탭 이름과 로그 파일 이름(호스트이름_날짜_시간.log)으로 씁니다. 콘솔에서 케이블을 다른 장비로 옮기면 로그 파일도 새로 만듭니다. 탭 이름을 직접 바꾸면 그 탭은 그대로 둡니다.'),
         )),
@@ -720,6 +741,8 @@ function settingsDialog(st, section) {
               autoLogAll: autoLogAll.checked,
               logTimestamps: logTs.checked,
               logHostName: logHostName.value,
+              logLayout: logLayout.value,
+              logDaily: logDaily.checked,
               defaultEncoding: defEnc.value,
               defaultTermType: defTerm.value,
               highlightEnabled: hlOn.checked,

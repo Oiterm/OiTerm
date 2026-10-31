@@ -19,6 +19,8 @@ const DEFAULT_SETTINGS = {
   autoLogAll: true,
   logTimestamps: true,
   logHostName: 'auto',
+  logLayout: 'flat',
+  logDaily: false,
   defaultEncoding: 'utf8',
   defaultTermType: 'xterm',
   highlightEnabled: true,

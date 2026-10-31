@@ -13,6 +13,21 @@ function fileStamp(d = new Date()) {
 function safeName(s) {
   return String(s || 'session').replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim().slice(0, 80) || 'session';
 }
+function dayStamp(d = new Date()) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+
+/** 폴더 이름·확장자만 붙는 파일 이름으로 써도 안전한 이름
+ *  (장비가 보낸 호스트 이름이 들어오므로: 경로 문자 제거, ".", ".." 같은 이름 막기,
+ *   Windows 예약 이름 CON·NUL·COM1 등과 끝의 점·공백 처리) */
+function safeBase(s) {
+  let n = safeName(s).replace(/^[.\s]+|[.\s]+$/g, '');
+  if (!n || /^\.+$/.test(n)) n = 'session';
+  if (/^(con|prn|aux|nul|com\d|lpt\d|conin\$|conout\$)(\..*)?$/i.test(n)) n = '_' + n;
+  return n;
+}
+
+// 이 프로그램 안에서 지금 열려 있는 로그 파일 (같은 장비 탭 두 개가 한 파일에 섞이지 않게)
+const openPaths = new Set();
+const key = (p) => path.resolve(p).toLowerCase();
 
 // 화면 출력용 문자열을 "한 줄 버퍼 + 커서" 모델로 해석
 class LineRenderer {
@@ -93,14 +108,24 @@ class LineRenderer {
   }
 }
 
+/** 폴더 구조
+ *  flat        : 로그폴더/SW1_20261031_192233.log            (하루 파일: SW1_20261031.log)
+ *  date        : 로그폴더/2026-10-31/SW1_20261031_192233.log (하루 파일: 2026-10-31/SW1.log)
+ *  date-device : 로그폴더/2026-10-31/SW1/SW1_20261031_192233.log (하루 파일: 2026-10-31/SW1/SW1.log) */
+const LAYOUTS = ['flat', 'date', 'date-device'];
+
 class SessionLogger {
-  constructor({ dir, name, timestamps = true }) {
-    fs.mkdirSync(dir, { recursive: true });
-    this.dir = dir;
-    this.fileStamp = fileStamp();
-    this.path = path.join(dir, `${safeName(name)}_${this.fileStamp}.log`);
+  constructor({ dir, name, timestamps = true, layout = 'flat', daily = false }) {
+    this.base = dir;
+    this.layout = LAYOUTS.includes(layout) ? layout : 'flat';
+    this.daily = !!daily;
+    this.started = new Date();
+    this.fileStamp = fileStamp(this.started);
+    this.path = this.pathFor(name);
+    fs.mkdirSync(path.dirname(this.path), { recursive: true });
     this.timestamps = timestamps;
     this.fd = fs.openSync(this.path, 'a');
+    openPaths.add(key(this.path));
     this.buf = [];
     this.timer = null;
     this.renderer = new LineRenderer((line) => {
@@ -129,17 +154,60 @@ class SessionLogger {
     this._w(`===== ${msg} ${stamp()} =====\r\n`);
   }
 
-  /** 탭 이름이 정해지면 로그 파일 이름도 맞춰 바꿈 (예: 192.168.100.2_23 → SW1) */
+  /** 이 로그가 들어갈 경로 (항상 로그 폴더 안) */
+  pathFor(name, avoidOpen = true) {
+    const n = safeBase(name);
+    const day = dayStamp(this.started);
+    let dir = this.base;
+    if (this.layout !== 'flat') dir = path.join(dir, day);
+    if (this.layout === 'date-device') dir = path.join(dir, n);
+    let file;
+    if (this.daily) {
+      file = path.join(dir, this.layout === 'flat' ? `${n}_${this.fileStamp.slice(0, 8)}.log` : `${n}.log`);
+      // 같은 장비 탭이 이미 이 파일에 쓰고 있으면 섞이지 않게 시각 붙인 파일로
+      if (avoidOpen && openPaths.has(key(file))) file = path.join(dir, `${n}_${this.fileStamp}.log`);
+    } else {
+      file = path.join(dir, `${n}_${this.fileStamp}.log`);
+    }
+    // 마지막 안전장치: 로그 폴더 밖으로는 절대 안 나감
+    const rel = path.relative(path.resolve(this.base), path.resolve(file));
+    if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return path.join(this.base, `session_${this.fileStamp}.log`);
+    return file;
+  }
+
+  /** 탭 이름이 정해지면 로그 파일 이름(폴더)도 맞춰 바꿈 (예: 192.168.100.2_23 → SW1)
+   *  하루 파일 모드에서 그 장비 파일이 이미 있으면 지금까지 쓴 내용을 거기에 이어 붙임 */
   renameTo(name) {
-    const np = path.join(this.dir, `${safeName(name)}_${this.fileStamp}.log`);
-    if (np === this.path || this.fd === null) return this.path;
+    if (this.fd === null) return this.path;
+    const np = this.pathFor(name);
+    if (key(np) === key(this.path)) return this.path;
     this.flushFile();
+    const old = this.path;
     try {
       fs.closeSync(this.fd);
-      if (!fs.existsSync(np)) { fs.renameSync(this.path, np); this.path = np; }
+      fs.mkdirSync(path.dirname(np), { recursive: true });
+      if (!fs.existsSync(np)) { fs.renameSync(old, np); this.path = np; }
+      else if (this.daily && !openPaths.has(key(np))) {
+        fs.appendFileSync(np, fs.readFileSync(old));
+        fs.unlinkSync(old);
+        this.path = np;
+      }
     } catch (_) { /* 이름을 못 바꾸면 기존 이름 유지 */ }
+    if (this.path !== old) {
+      openPaths.delete(key(old));
+      openPaths.add(key(this.path));
+      this.removeEmptyDir(path.dirname(old));
+    }
     this.fd = fs.openSync(this.path, 'a');
     return this.path;
+  }
+
+  /** 이름이 바뀌어 비게 된 장비 폴더 정리 (로그 폴더·날짜 폴더 자체는 그대로) */
+  removeEmptyDir(d) {
+    if (this.layout !== 'date-device') return;
+    const rel = path.relative(path.resolve(this.base), path.resolve(d));
+    if (!rel || rel.startsWith('..') || rel.split(path.sep).length !== 2) return;
+    try { if (!fs.readdirSync(d).length) fs.rmdirSync(d); } catch (_) {}
   }
 
   close() {
@@ -148,7 +216,8 @@ class SessionLogger {
     this.flushFile();
     try { fs.closeSync(this.fd); } catch (_) {}
     this.fd = null;
+    openPaths.delete(key(this.path));
   }
 }
 
-module.exports = { SessionLogger, LineRenderer, safeName, stamp };
+module.exports = { SessionLogger, LineRenderer, safeName, safeBase, stamp, LAYOUTS };

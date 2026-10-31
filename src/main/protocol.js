@@ -144,12 +144,16 @@ async function schemeStatus(sc) {
   }
   const ours = isOurs(effectiveCmd);
   let other = '';
+  let otherPath = '';
   if (!ours && effectiveCmd) {
     const m = /"?([^"]+?\.(?:exe|cmd|bat|vbs))"?/i.exec(effectiveCmd);
     other = m ? path.basename(m[1]) : effectiveCmd;
+    otherPath = m ? m[1] : '';
     if (/url\.dll/i.test(effectiveCmd)) other = 'Windows 기본 텔넷';
   }
-  return { registered: isOurs(hkcuCmd), ours, userChoice, other };
+  // 다른 폴더에 있는 OiTerm(또는 예전 SwitchTerm)으로 걸려 있는 경우: 경로를 보여줘야 헷갈리지 않음
+  const otherOiTerm = !!otherPath && /^(oiterm|switchterm)\.exe$/i.test(path.basename(otherPath));
+  return { registered: isOurs(hkcuCmd), ours, userChoice, other, otherPath: otherOiTerm ? otherPath : '', otherOiTerm, otherExists: otherOiTerm ? fs.existsSync(otherPath) : false };
 }
 
 /** 각 링크 종류가 지금 어떤 프로그램으로 열리는지 */
@@ -208,21 +212,27 @@ function installedHere() {
 }
 
 /** 예전 SwitchTerm.exe나 다른 위치의 OiTerm.exe로 등록돼 있던 링크 종류를 지금 exe로 다시 등록 (사용자가 이미 켜둔 것만) */
+/** 시작할 때: 예전 SwitchTerm·없어진 OiTerm·(설치 버전이면) 다른 OiTerm에 걸린 링크는 지금 것으로 옮기고,
+ *  그 밖에 "다른 폴더에 멀쩡히 있는 OiTerm"에 걸린 건 사용자에게 물어볼 목록으로 돌려줌
+ *  → { moved: ['telnet', …], others: [{ scheme, path }] } */
 async function migrateLegacy(app, store) {
-  if (process.platform !== 'win32') return [];
+  if (process.platform !== 'win32') return { moved: [], others: [] };
   const legacy = [];
+  const others = [];
   const here = installedHere();
   for (const sc of SCHEMES) {
+    // 실제로 열리는 프로그램 기준 (Windows "기본 앱"에서 고른 것 포함)
+    const st = await schemeStatus(sc);
+    if (st.ours) continue;
     const cmd = await regGet(`HKCU\\Software\\Classes\\${sc}\\shell\\open\\command`);
-    if (!cmd || isOurs(cmd)) continue;
-    if (/switchterm\.exe/i.test(cmd)) { legacy.push(sc); continue; }
-    // 다른 위치의 OiTerm.exe로 걸려 있음: 그 파일이 없어졌거나(zip 폴더 삭제·이동), 지금 것이 설치 버전이면 지금 것으로
-    const m = /"([^"]*oiterm\.exe)"/i.exec(cmd);
-    if (m && (!fs.existsSync(m[1]) || here)) legacy.push(sc);
+    if (cmd && /switchterm\.exe/i.test(cmd)) { legacy.push(sc); continue; }
+    if (!st.otherOiTerm) continue;
+    if (!st.otherExists || here) legacy.push(sc);
+    else others.push({ scheme: sc, path: st.otherPath });
   }
-  if (!legacy.length) return [];
-  const r = await register(app, store, legacy);
-  return r.ok ? legacy : [];
+  let moved = [];
+  if (legacy.length) { const r = await register(app, store, legacy); if (r.ok) moved = legacy; }
+  return { moved, others };
 }
 
 module.exports = { migrateLegacy, parseLink, extractLinks, status, register, unregister, buildRegisterReg, buildUnregisterReg, launchCommand, SCHEMES };

@@ -1063,6 +1063,12 @@ const App = window.App = {
     });
     window.api.onAsk(async (reqId, kind, tabId, payload) => {
       const t = this.tabById(tabId);
+      if (kind === 'linkmove') {
+        const names = payload.schemes.map((s) => s + '://').join(', ');
+        const ok = await confirmBox(`EVE-NG / PNETLab 링크(${names})가 다른 폴더에 있는 OiTerm으로 열리고 있어요.\n\n지금 링크가 여는 것:\n${payload.other}\n\n지금 켜진 OiTerm:\n${payload.here}\n\n노드를 누르면 지금 켜진 OiTerm으로 열리게 바꿀까요? (예전 zip 폴더를 정리했다면 "바꾸기")`, { title: '링크 연동', ok: '바꾸기', cancel: '그대로 두기' });
+        window.api.answer(reqId, ok);
+        return;
+      }
       if (!t && kind !== 'cert' && kind !== 'auth') { window.api.answer(reqId, null); return; }
       if (t) this.activate(t);
       let p = null;

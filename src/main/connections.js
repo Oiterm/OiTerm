@@ -195,7 +195,7 @@ class Connection {
     if (this.logger) return this.logger.path;
     const st = this.mgr.store.getSettings();
     try {
-      this.logger = new SessionLogger({ dir: st.logDir, name: this.logHost || this.cfg.name || this.cfg.host || this.cfg.serialPort, timestamps: st.logTimestamps });
+      this.logger = new SessionLogger({ dir: st.logDir, name: this.logHost || this.cfg.name || this.cfg.host || this.cfg.serialPort, timestamps: st.logTimestamps, layout: st.logLayout, daily: st.logDaily });
       this.mgr.send('log:status', this.tabId, { active: true, path: this.logger.path });
       return this.logger.path;
     } catch (e) {

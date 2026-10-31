@@ -1,7 +1,7 @@
 {
   "name": "oiterm",
   "productName": "OiTerm",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "네트워크 엔지니어용 SSH / Telnet / 시리얼 터미널",
   "main": "src/main/main.js",
   "author": "OiTerm",
