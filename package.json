@@ -1,7 +1,7 @@
 {
   "name": "oiterm",
   "productName": "OiTerm",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "네트워크 엔지니어용 SSH / Telnet / 시리얼 터미널",
   "main": "src/main/main.js",
   "author": "OiTerm",
@@ -30,7 +30,7 @@
     "zmodem.js": "^0.1.10"
   },
   "devDependencies": {
-    "electron": "^45.1.0",
+    "electron": "^45.2.1",
     "electron-builder": "^26.18.0",
     "esbuild": "^0.28.2",
     "oui-data": "^2.1.48"
