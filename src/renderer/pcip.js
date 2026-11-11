@@ -58,6 +58,22 @@ const PcIpUI = {
     const STATE = { Up: '연결됨', Disconnected: '케이블 빠짐', Disabled: '사용 안 함', 'Not Present': '장치 없음' };
     const fmtAddrs = (a) => a.addrs.filter((x) => x.origin !== 'WellKnown').map((x) => `${x.ip}/${x.prefix}${x.state === 'Duplicate' ? ' (IP 충돌!)' : x.state === 'Tentative' ? ' (확인 중)' : ''}`).join(', ');
     const describePrev = (p) => (p.mode === 'dhcp' ? '자동(DHCP)' : `${p.ip}/${p.mask}${p.gw ? ' GW ' + p.gw : ''}`);
+    const ipInt = (ip) => ip.split('.').reduce((n, o) => n * 256 + Number(o), 0) >>> 0;
+    const sameNet = (a, b, prefix) => { const m = prefix ? (0xffffffff << (32 - prefix)) >>> 0 : 0; return ((ipInt(a) & m) >>> 0) === ((ipInt(b) & m) >>> 0); };
+    /** IP가 여러 개거나 대역 밖 게이트웨이가 남아 있으면 경고 문구 (예전 설정이 덜 지워진 상태) */
+    function mixedWarning(a) {
+      const ips = a.addrs.filter((x) => x.origin !== 'WellKnown' && !x.ip.startsWith('169.254.'));
+      const stray = a.gw.filter((g) => !ips.some((x) => sameNet(g, x.ip, x.prefix)));
+      // 같은 대역 IP가 두 개 이상이면 그 대역 PC·서버에 붙을 때 어느 IP로 나갈지 모름 (허용 IP 걸린 서버에서 끊김)
+      const dup = ips.filter((x) => ips.some((y) => y !== x && sameNet(x.ip, y.ip, Math.min(x.prefix, y.prefix))));
+      const lines = [];
+      if (dup.length) lines.push(`같은 대역 IP가 ${dup.length}개 잡혀 있습니다 (${dup.map((x) => x.ip).join(', ')}). 이 대역 PC·서버에 붙을 때 어느 IP로 나갈지 몰라, 허용 IP를 걸어둔 서버에서 끊길 수 있습니다.`);
+      if (stray.length) lines.push(`게이트웨이 ${stray.join(', ')}은(는) 이 랜카드 IP 대역 밖입니다 (예전 설정이 남은 것).`);
+      else if (a.gw.length > 1) lines.push(`게이트웨이가 ${a.gw.length}개입니다 (${a.gw.join(', ')}).`);
+      if (!lines.length) return null;
+      lines.push('원하는 설정(고정 IP 또는 자동)으로 다시 적용하면 나머지는 지워집니다.');
+      return h('div.pcip-msg.err', lines.join('\n'));
+    }
 
     function setMsg(text, kind = '') { msg.textContent = text || ''; msg.className = 'pcip-msg' + (kind ? ' ' + kind : ''); }
 
@@ -77,6 +93,8 @@ const PcIpUI = {
         h('div', `상태: ${STATE[a.status] || a.status}  ·  ${a.bound ? (a.dhcp === 'Enabled' ? '자동(DHCP)' : '고정 IP') : 'IPv4 꺼짐'}  ·  MAC ${a.mac}`),
         h('div', `IP: ${addrs || '없음'}${a.gw.length ? '  ·  게이트웨이 ' + a.gw.join(', ') : ''}${a.dns.length ? '  ·  DNS ' + a.dns.join(', ') : ''}`),
       );
+      const warn = mixedWarning(a);
+      if (warn) cur.append(warn);
       const p = prev[a.name];
       restoreBtn.disabled = !p;
       restoreBtn.title = p ? `OiTerm으로 처음 바꾸기 전의 원래 설정으로: ${describePrev(p)}` : '되돌릴 원래 설정이 없습니다 (아직 안 바꿈)';

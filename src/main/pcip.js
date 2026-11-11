@@ -86,6 +86,7 @@ $list = @(Get-NetAdapter | Sort-Object -Property ifIndex | ForEach-Object {
     dhcp   = [string]$ipif.Dhcp
     addrs  = @(Get-NetIPAddress -InterfaceIndex $i -AddressFamily IPv4 | ForEach-Object { '{0}/{1}/{2}/{3}' -f $_.IPAddress, $_.PrefixLength, $_.AddressState, $_.PrefixOrigin })
     gw     = @(Get-NetRoute -InterfaceIndex $i -DestinationPrefix '0.0.0.0/0' | ForEach-Object { [string]$_.NextHop } | Select-Object -Unique)
+    gwx    = @(Get-NetRoute -InterfaceIndex $i -DestinationPrefix '0.0.0.0/0' | ForEach-Object { '{0}/{1}' -f $_.NextHop, $_.Protocol } | Select-Object -Unique)
     dns    = @((Get-DnsClientServerAddress -InterfaceIndex $i -AddressFamily IPv4).ServerAddresses)
   }
 })
@@ -127,21 +128,47 @@ function buildElevateScript(innerScript, psPath = winPath('WindowsPowerShell', '
   ].join('\n');
 }
 
-/** netsh 순서 만들기 (ifIndex 숫자로만 지정). [{ args, soft }] — 단계 번호는 soft 아닌 것만 셈 */
+const isLinkLocal = (ip) => ip.startsWith('169.254.');
+/** 이 랜카드에 직접 넣은(고정) IP — DHCP·자동 주소는 빼고 */
+const manualAddrs = (a) => (a.addrs || []).filter((x) => x.origin === 'Manual' && !isLinkLocal(x.ip));
+/** 고정(손으로 넣은) 게이트웨이. 경로 종류를 못 읽었으면 DHCP가 아닐 때 전부 고정으로 봄 */
+function staticGws(a) {
+  if (Array.isArray(a.gwStatic)) return a.gwStatic;
+  return a.dhcp === 'Enabled' ? [] : (a.gw || []);
+}
+
+/** netsh 순서 만들기 (ifIndex 숫자로만 지정). [{ args, soft }] — 단계 번호는 soft 아닌 것만 셈
+ *
+ * netsh "set address"만으로는 예전 설정이 다 안 지워지는 경우가 있음
+ *  - 고정 → 다른 고정/DHCP로 바꿔도 예전 게이트웨이(외근지 192.168.30.1 같은)가 남음
+ *  - 예전 고정 IP가 두 번째 IP로 남아, 다른 PC에 붙을 때 어느 IP로 나갈지 모르게 됨
+ *  → 예전 게이트웨이는 주소를 적어서(nexthop) 지우고, 남은 고정 IP도 하나씩 지움.
+ *    지우는 단계는 soft(없거나 실패해도 계속). 저장된 설정·지금 설정 둘 다 지우려고 store=active도 한 번 더 */
 function buildPlan(index, cfg, current) {
   const name = `name=${index}`;
   const R = (...args) => ({ args });
+  const S = (...args) => ({ args, soft: true });
+  const cur = current || { addrs: [], gw: [] };
+  const delGw = (g) => [
+    S('interface', 'ipv4', 'delete', 'route', 'prefix=0.0.0.0/0', `interface=${index}`, `nexthop=${g}`),
+    S('interface', 'ipv4', 'delete', 'route', 'prefix=0.0.0.0/0', `interface=${index}`, `nexthop=${g}`, 'store=active'),
+  ];
+  const delAddr = (ip) => [
+    S('interface', 'ipv4', 'delete', 'address', name, `address=${ip}`),
+    S('interface', 'ipv4', 'delete', 'address', name, `address=${ip}`, 'store=active'),
+  ];
   if (cfg.mode === 'dhcp') {
     const p = [];
-    if (!current || current.dhcp !== 'Enabled') {
-      // 고정 → DHCP: 예전 고정 게이트웨이가 남는 경우가 있어 먼저 지움 (없으면 실패해도 그만)
-      if (current && current.gw && current.gw.length) p.push({ args: ['interface', 'ipv4', 'delete', 'route', 'prefix=0.0.0.0/0', `interface=${index}`], soft: true });
-      p.push(R('interface', 'ipv4', 'set', 'address', name, 'source=dhcp'));
-    }
+    for (const g of staticGws(cur)) p.push(...delGw(g));
+    if (cur.dhcp !== 'Enabled') p.push(R('interface', 'ipv4', 'set', 'address', name, 'source=dhcp'));
+    for (const x of manualAddrs(cur)) p.push(...delAddr(x.ip));
     p.push(R('interface', 'ipv4', 'set', 'dnsservers', name, 'source=dhcp'));
     return p;
   }
-  const p = [R('interface', 'ipv4', 'set', 'address', name, 'source=static', `address=${cfg.ip}`, `mask=${cfg.mask}`, `gateway=${cfg.gw || 'none'}`)];
+  // 예전 게이트웨이는 먼저 지움 (새 게이트웨이와 같은 게 남아 있으면 netsh가 "이미 있음"으로 실패하는 것도 막음)
+  const p = (cur.gw || []).flatMap(delGw);
+  p.push(R('interface', 'ipv4', 'set', 'address', name, 'source=static', `address=${cfg.ip}`, `mask=${cfg.mask}`, `gateway=${cfg.gw || 'none'}`));
+  for (const x of manualAddrs(cur)) if (x.ip !== cfg.ip) p.push(...delAddr(x.ip));
   if (cfg.dns.length) {
     p.push(R('interface', 'ipv4', 'set', 'dnsservers', name, 'source=static', `address=${cfg.dns[0]}`, 'register=primary', 'validate=no'));
     cfg.dns.slice(1).forEach((d, i) => p.push(R('interface', 'ipv4', 'add', 'dnsservers', name, `address=${d}`, `index=${i + 2}`, 'validate=no')));
@@ -164,8 +191,22 @@ function normalize(raw) {
     addrs: arr(a.addrs).map((s) => { const [ip, prefix, state, origin] = String(s).split('/'); return { ip, prefix: Number(prefix), state: state || '', origin: origin || '' }; })
       .filter((x) => IPV4.test(x.ip)),
     gw: arr(a.gw).map(String).filter((g) => IPV4.test(g) && g !== '0.0.0.0'),
+    // 게이트웨이 경로 종류 (Dhcp = DHCP로 받은 것, 나머지 = 손으로 넣은 것). 못 읽었으면 없음
+    ...(a.gwx === undefined ? {} : {
+      gwStatic: [...new Set(arr(a.gwx).map((s) => String(s).split('/'))
+        .filter(([ip, proto]) => IPV4.test(ip) && ip !== '0.0.0.0' && proto !== 'Dhcp').map(([ip]) => ip))],
+    }),
     dns: arr(a.dns).map(String).filter((d) => IPV4.test(d)),
   }));
+}
+
+/** 바꾼 뒤에도 남은 예전 설정 (IP·게이트웨이) */
+function leftovers(a, cfg) {
+  const ips = (a.addrs || []).filter((x) => x.origin !== 'WellKnown' && !isLinkLocal(x.ip));
+  if (cfg.mode === 'dhcp') {
+    return { ips: ips.filter((x) => x.origin === 'Manual').map((x) => x.ip), gws: staticGws(a) };
+  }
+  return { ips: ips.filter((x) => x.ip !== cfg.ip).map((x) => x.ip), gws: (a.gw || []).filter((g) => g !== cfg.gw) };
 }
 
 const STATE_KO = { Up: '연결됨', Disconnected: '케이블 빠짐', Disabled: '사용 안 함', 'Not Present': '장치 없음' };
@@ -266,6 +307,13 @@ class PcIp {
         else if (!got && now.status === 'Up') { out.warn = true; out.message = `설정은 보냈지만 ${cfg.ip}가 아직 안 보입니다. 잠시 뒤 새로 고쳐 확인하세요.`; }
         else out.message = `"${now.name}" → ${cfg.ip}/${cfg.prefix}${cfg.gw ? ' · 게이트웨이 ' + cfg.gw : ' · 게이트웨이 없음'}${cfg.dns.length ? ' · DNS ' + cfg.dns.join(', ') : ''}` + (now.status === 'Up' ? '' : ` (지금 ${STATE_KO[now.status] || now.status})`);
       }
+      // 지웠는데도 예전 IP·게이트웨이가 남아 있으면 알림 (IP가 두 개면 다른 PC·서버에 붙을 때 엉뚱한 IP로 나갈 수 있음)
+      const left = leftovers(now, cfg);
+      if (left.ips.length || left.gws.length) {
+        out.warn = true;
+        out.message += `\n예전 설정이 아직 남아 있습니다: ${[left.ips.length ? 'IP ' + left.ips.join(', ') : '', left.gws.length ? '게이트웨이 ' + left.gws.join(', ') : ''].filter(Boolean).join(' · ')}`
+          + '\n한 번 더 적용하거나, 제어판(ncpa.cpl) → 랜카드 속성 → IPv4 → 고급에서 지우세요.';
+      }
       return out;
     } catch (e) {
       return { ok: false, message: 'IP를 바꾸지 못했습니다: ' + e.message };
@@ -296,4 +344,4 @@ function runPowerShell(script, { elevated } = {}) {
   });
 }
 
-module.exports = { PcIp, validateStatic, parsePrefix, hostIp, buildPlan, buildApplyScript, buildElevateScript, normalize, LIST_SCRIPT, encode };
+module.exports = { PcIp, validateStatic, parsePrefix, hostIp, buildPlan, buildApplyScript, buildElevateScript, normalize, leftovers, LIST_SCRIPT, encode };
