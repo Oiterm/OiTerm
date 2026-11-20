@@ -361,6 +361,7 @@ function registerIpc() {
   handle('pcip:apply', (_e, req) => pcip.apply(req && typeof req === 'object' && !Array.isArray(req)
     ? { index: typeof req.index === 'number' ? req.index : NaN, mode: str(req.mode), ip: str(req.ip), mask: str(req.mask), gw: str(req.gw), dns1: str(req.dns1), dns2: str(req.dns2) } : null));
   handle('pcip:restore', (_e, index) => pcip.restore(typeof index === 'number' ? index : NaN));
+  handle('pcip:forget', (_e, name) => pcip.forget(typeof name === 'string' ? name.slice(0, 256) : ''));
   handle('update:check', () => updater.check({ manual: true }));
   handle('update:install', () => updater.install());
   on('update:skip', (_e, v) => updater.skip(typeof v === 'string' ? v : ''));

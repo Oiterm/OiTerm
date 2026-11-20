@@ -418,3 +418,6 @@ input.inp::placeholder, textarea::placeholder { color: var(--muted); }
 .pcip-msg { min-height: 18px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
 .pcip-msg.err { color: var(--err); }
 .pcip-msg.ok { color: var(--ok); }
+.pcip-prev { margin-top: 4px; color: var(--text-2); }
+.pcip-prev.warn { color: var(--warn); }
+.btn.warn { border-color: var(--warn); color: var(--warn); }

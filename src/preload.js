@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld('api', {
   pcipList: () => ipcRenderer.invoke('pcip:list'),
   pcipApply: (req) => ipcRenderer.invoke('pcip:apply', req),
   pcipRestore: (index) => ipcRenderer.invoke('pcip:restore', index),
+  pcipForget: (name) => ipcRenderer.invoke('pcip:forget', name),
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateInstall: () => ipcRenderer.invoke('update:install'),
   updateSkip: (v) => ipcRenderer.send('update:skip', v),

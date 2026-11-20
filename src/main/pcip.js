@@ -211,6 +211,13 @@ function leftovers(a, cfg) {
 
 const STATE_KO = { Up: '연결됨', Disconnected: '케이블 빠짐', Disabled: '사용 안 함', 'Not Present': '장치 없음' };
 
+/** 랜카드 지금 상태가 저장된 설정(o: {mode, ip, mask})과 같은지 */
+function sameAs(a, o) {
+  if (!a.bound) return false;
+  if (o.mode === 'dhcp') return a.dhcp === 'Enabled';
+  return a.dhcp !== 'Enabled' && a.addrs.some((x) => x.ip === o.ip && x.prefix === Number(o.mask != null ? o.mask : o.prefix));
+}
+
 class PcIp {
   /** runPs(script, { elevated }) → Promise<{ code, stdout }> (시험할 때 바꿔 끼움) */
   constructor({ store, runPs }) {
@@ -230,7 +237,29 @@ class PcIp {
       return { ok: false, message: '랜카드 목록을 읽지 못했습니다. PowerShell이 막혀 있는 PC일 수 있습니다.' };
     }
     this.adapters = normalize(raw);
+    this.dropStale();
     return { ok: true, adapters: this.adapters, prev: this.prevAll() };
+  }
+
+  /** 랜카드가 이미 기억한 원래 설정과 같아졌으면(밖에서 되돌림) 기억을 지움 */
+  dropStale() {
+    const p = this.store.data.pcipPrev;
+    if (!p || typeof p !== 'object') return;
+    let changed = false;
+    for (const a of this.adapters) {
+      const o = p[a.name];
+      if (o && sameAs(a, o)) { delete p[a.name]; changed = true; }
+    }
+    if (changed) this.store.save();
+  }
+
+  /** "원래대로" 기억 지우기 */
+  forget(name) {
+    const p = this.store.data.pcipPrev;
+    if (typeof name !== 'string' || !p || typeof p !== 'object' || !Object.prototype.hasOwnProperty.call(p, name)) return { ok: false, message: '지울 기억이 없습니다.' };
+    delete p[name];
+    this.store.save();
+    return { ok: true, prev: this.prevAll() };
   }
 
   prevAll() {
@@ -256,6 +285,11 @@ class PcIp {
     const o = p[name];
     const back = cfg.mode === 'dhcp' ? o.mode === 'dhcp' : (o.mode === 'static' && o.ip === cfg.ip && Number(o.mask) === cfg.prefix);
     if (back) delete p[name];
+    else {
+      // OiTerm이 마지막으로 넣은 설정 — 나중에 OiTerm 밖(Windows 설정 등)에서 바뀌었는지 알아보는 데 씀
+      o.lastApplied = cfg.mode === 'dhcp' ? { mode: 'dhcp' } : { mode: 'static', ip: cfg.ip, prefix: cfg.prefix };
+      o.appliedAt = Date.now();
+    }
     this.store.save();
   }
 

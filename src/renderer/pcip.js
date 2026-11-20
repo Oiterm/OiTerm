@@ -26,6 +26,7 @@ const PcIpUI = {
     const presetSel = h('select.inp.grow', { onchange: () => usePreset() });
     const msg = h('div.pcip-msg');
     const restoreBtn = h('button.btn', { onclick: () => restore() }, '되돌리기');
+    const forgetBtn = h('button.btn', { title: '기억해 둔 원래 설정을 지웁니다 (랜카드 설정은 안 바뀜)', onclick: () => forget() }, '기억 지우기');
     const applyBtn = h('button.btn.primary', { onclick: () => apply() }, '적용');
 
     const row = (label, el, hint) => h('div.pcip-row', h('label', label), el, hint ? h('span.hint', hint) : null);
@@ -50,7 +51,7 @@ const PcIpUI = {
     );
     const m = openModal({
       title: 'PC IP 바꾸기', cls: 'pcip-modal', body,
-      left: [restoreBtn],
+      left: [restoreBtn, forgetBtn],
       buttons: [h('button.btn', { onclick: () => m.close() }, '닫기'), applyBtn],
     });
 
@@ -97,8 +98,32 @@ const PcIpUI = {
       if (warn) cur.append(warn);
       const p = prev[a.name];
       restoreBtn.disabled = !p;
+      forgetBtn.hidden = !p;
+      restoreBtn.classList.toggle('warn', !!(p && outside(a, p)));
       restoreBtn.title = p ? `OiTerm으로 처음 바꾸기 전의 원래 설정으로: ${describePrev(p)}` : '되돌릴 원래 설정이 없습니다 (아직 안 바꿈)';
       restoreBtn.textContent = p ? `원래대로 (${describePrev(p)})` : '원래대로';
+      if (p) {
+        const when = fmtWhen(p.savedAt);
+        cur.append(h('div.pcip-prev' + (outside(a, p) ? '.warn' : ''),
+          `원래대로 기억: ${describePrev(p)}${when ? ` (${when} 저장)` : ''}`
+          + (outside(a, p) ? ' — 그 뒤로 OiTerm 밖(Windows 설정 등)에서 설정이 바뀌었어요. 필요 없으면 "기억 지우기"' : '')));
+      }
+    }
+
+    // 날짜 표시 (오늘이면 시각만)
+    function fmtWhen(t) {
+      if (!t) return '';
+      const d = new Date(t); const n = new Date(); const p2 = (x) => String(x).padStart(2, '0');
+      const hm = `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+      return d.toDateString() === n.toDateString() ? `오늘 ${hm}` : `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
+    }
+
+    // OiTerm이 마지막으로 넣은 설정과 지금이 다르면 밖에서 바뀐 것 (예전 기록엔 lastApplied가 없어 날짜만 보여줌)
+    function outside(a, p) {
+      const l = p.lastApplied;
+      if (!l) return !!p.savedAt && a.dhcp === 'Enabled' && p.mode !== 'dhcp';
+      if (l.mode === 'dhcp') return a.dhcp !== 'Enabled';
+      return a.dhcp === 'Enabled' || !a.addrs.some((x) => x.ip === l.ip && x.prefix === l.prefix);
     }
 
     function fillPresets() {
@@ -197,8 +222,17 @@ const PcIpUI = {
       const a = curAdapter();
       const p = a && prev[a.name];
       if (!p) return;
+      if (outside(a, p) && !(await confirmBox(`기억해 둔 원래 설정(${describePrev(p)})은 ${fmtWhen(p.savedAt) || '예전'}에 저장한 거예요.\n그 뒤로 이 랜카드 설정이 OiTerm 밖에서 바뀌었어요 (지금: ${a.dhcp === 'Enabled' ? '자동(DHCP)' : '고정 IP'}).\n\n그래도 ${describePrev(p)}로 바꿀까요?`, { title: '원래대로', ok: '바꾸기' }))) return;
       if (!(await confirmRisk(a, p.mode === 'dhcp'))) return;
       await run(() => window.api.pcipRestore(a.index), `되돌리는 중 (${describePrev(p)})`);
+    }
+
+    async function forget() {
+      const a = curAdapter();
+      if (!a || !prev[a.name]) return;
+      const r = await window.api.pcipForget(a.name);
+      if (r.ok) { prev = r.prev; showCurrent(); setMsg('원래대로 기억을 지웠어요. 랜카드 설정은 그대로입니다.', 'ok'); }
+      else setMsg(r.message, 'err');
     }
 
     fillPresets();
